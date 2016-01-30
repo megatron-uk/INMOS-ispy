@@ -645,82 +645,71 @@ void		writeCl(struct c4stats * q)
  * --------------------------------------------------
  */
 
-/*{{{  int	       readbytes(....) */
-int		readbytes(LINK TheLink,
-			  unsigned char *string, unsigned int maxlength)
-{
-  unsigned int bytes_to_go = maxlength;
-  unsigned char *read_point = string;
-  int bytesread = 0;
-  int count = 10;
+int readbytes(LINK TheLink, unsigned char *string, unsigned int maxlength) {
+	unsigned int bytes_to_go = maxlength;
+	unsigned char *read_point = string;
+	int bytesread = 0;
+	int count = 10;
 
-  while ((bytes_to_go > 0) && (count > 0))
-  {
-    bytesread = ReadLink(TheLink, read_point, bytes_to_go, TIMEOUT);
-    DEBUG((stderr, "readbytes(bytesread = %d)", bytesread));
-    bytes_to_go -= bytesread;
-    read_point	+= bytesread;
-    count--;
-  }
+	while ((bytes_to_go > 0) && (count > 0)) {
+		bytesread = ReadLink(TheLink, read_point, bytes_to_go, TIMEOUT);
+		DEBUG((stderr, "readbytes(bytesread = %d)", bytesread));
+		bytes_to_go -= bytesread;
+		read_point += bytesread;
+		count--;
+	}
 
-  if (bytesread < 0)
-  {
-    fprintf(stderr, "Read from link failed - result = %i\n", bytesread);
-    bytesread = 0;
-  } else {
-    if (count == 0)
-      fprintf(stderr, "Read from link failed (Timeout)\n");
-    else
-      bytesread = maxlength - bytes_to_go;
-  }
+	if (bytesread < 0) {
+		fprintf(stderr, "Read from link failed - result = %i\n", bytesread);
+		bytesread = 0;
+	} else {
+		if (count == 0) {
+			fprintf(stderr, "Read from link failed (Timeout)\n");
+		} else {
+			bytesread = maxlength - bytes_to_go;
+		}
+	}
 
-  DEBUG((stderr, "readbytes(bytesread = %d)", bytesread));
-  if (CocoPops)
-  {
-    int i;
+	DEBUG((stderr, "readbytes(bytesread = %d)", bytesread));
+	if (CocoPops) {
+		int i;
+		fputs("(", stderr);
+		for (i = 0; i < bytesread; i++) {
+			fprintf (stderr, "%0X ", (int) *(string + i) );
+		}
+		fputs(")", stderr);
+		fputc('\n', stderr);
+		fflush(stderr);
+	}
 
-    fputs("(", stderr);
-
-    for (i = 0; i < bytesread; i++)
-      fprintf (stderr, "%0X ", (int) *(string + i) );
-
-    fputs(")", stderr);
-    fputc('\n', stderr);
-    fflush(stderr);
-  }
-
-  return (bytesread);
-}
-/*}}}  */
-/*{{{  int	       getiserver(....) */
-int		getiserver(LINK TheLink, unsigned int *length,
-			      unsigned char *string, unsigned int maxlength)
-{
-    if (readbytes(TheLink, string, 2) == 2)
-    {
-	*length = (string[1] << 8) + string[0];
-	if
-	    ((*length <= maxlength) && (length) &&
-	     (readbytes(TheLink, string, *length) == *length))
-	    return (TRUE);
-	else
-	if (length)
-	    return (FALSE);
-	else			/* length of zero */
-	    return (TRUE);
-    } else
-	return (FALSE);
+	return (bytesread);
 }
 
-int sendiserver(LINK TheLink, unsigned int length, unsigned char *buffer)
-{
+int getiserver(LINK TheLink, unsigned int *length, unsigned char *string, unsigned int maxlength){
+	if (readbytes(TheLink, string, 2) == 2){
+		*length = (string[1] << 8) + string[0];
+		if ((*length <= maxlength) && (length) && (readbytes(TheLink, string, *length) == *length)) {
+			return (TRUE);
+		} else {
+			if (length) {
+				return (FALSE);
+			} else {
+				/* length of zero */
+				return (TRUE);
+			}
+		}
+	} else {
+		return (FALSE);
+	}
+}
+
+int sendiserver(LINK TheLink, unsigned int length, unsigned char *buffer) {
 	unsigned char   int16[2];
 	
 	int16[0] = (unsigned char) (length & 0xFF);
 	int16[1] = (unsigned char) (length >> 8);
 	
-	if ((WriteLink(TheLink, int16, 2, TIMEOUT) == 2) && length)
-	{
+	if ((WriteLink(TheLink, int16, 2, TIMEOUT) == 2) && length) {
 		unsigned int start=0, written=0; /* , writing=64;  */
 		do {
 			/* if ((length-written) < writing)
@@ -728,13 +717,15 @@ int sendiserver(LINK TheLink, unsigned int length, unsigned char *buffer)
 			start += written;
 			written = WriteLink(TheLink, &buffer[start], (length-written), TIMEOUT);
 		} while (written && ((start+written) < length));
-		if ((start+written) == length)
+		
+		if ((start+written) == length) {
 			return (TRUE);
-		else
+		} else {
 			return (FALSE);
-	}
-	else
+		}
+	} else {
 		return (FALSE);
+	}
 }
 
 void setroute(LINK TheLink, struct tpstats * p, int lastlink) {

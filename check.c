@@ -380,7 +380,7 @@ struct tpstats *create(struct tpstats * parent, int link) {
 	p->procspeed = 0;
 	p->bootlink = 255;
 	p->linkspeed = 0.0f;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 4; i++){
 	    p->links[i] = NULL;
 	    p->linkno[i] = UNKNOWN;
 	}
