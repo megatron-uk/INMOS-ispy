@@ -42,7 +42,7 @@ struct type32_struct type32_code = {
 	0xF8,0xFF,0xFF,0xFF, 0x00,0x00,0x80,0x7F },
 
 	"TA",	/* target */
-        "Undefined",	/* mode */
+    "Undefined",	/* mode */
 	284,	/* code size */
 	2,	/* offset */
 	27,	/* workspace */

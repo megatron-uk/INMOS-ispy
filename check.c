@@ -323,74 +323,64 @@ int findtype(void) {
 	return (type);
 }
 
-void ramtest(struct tpstats * p, int link)
-{
-    unsigned char   testcommand[3];
-    setroute(TheLink, p, link);
-    testcommand[0] = 0xFF;
-    testcommand[1] = 0xFF;
-    switch (p->linkno[link])
-    {
-	case T16:
-	    testcommand[2] = TAG_TEST16;
-	    break;
-	case T32:
-	    testcommand[2] = TAG_TEST32;
-	    break;
-    }
-    if (WriteLink(TheLink, testcommand, 3, TIMEOUT) != 3)
-    {
-	writeresults(root, LinkName, c4read, kong);
-	AbortExit(PROGRAM_NAME, "Partial results : Timed out sending RAMTEST to processor %d", p->tpid);
-    }
+void ramtest(struct tpstats * p, int link) {
+	unsigned char   testcommand[3];
+	setroute(TheLink, p, link);
+	testcommand[0] = 0xFF;
+	testcommand[1] = 0xFF;
+	switch (p->linkno[link]) {
+		case T16:
+			testcommand[2] = TAG_TEST16;
+			break;
+		case T32:
+			testcommand[2] = TAG_TEST32;
+			break;
+	}
+	if (WriteLink(TheLink, testcommand, 3, TIMEOUT) != 3) {
+		writeresults(root, LinkName, c4read, kong);
+		AbortExit(PROGRAM_NAME, "Partial results : Timed out sending RAMTEST to processor %d", p->tpid);
+	}
 }       
 
-void linkspeed(struct tpstats * p)
-{
-    static unsigned char LINKSPEED[] = {0xFF, 0xFF, TAG_LSPEED};
-    setroute(TheLink, p->parent, p->route);
-    if (WriteLink(TheLink, LINKSPEED, 3, TIMEOUT) == 3);
-    else
-    {
-	writeresults(root, LinkName, c4read, kong);
-	AbortExit(PROGRAM_NAME, "Partial results : Timed out testing link speed for processor %d", p->tpid);
-    }
-}   
+void linkspeed(struct tpstats * p){
+	static unsigned char LINKSPEED[] = {0xFF, 0xFF, TAG_LSPEED};
+	setroute(TheLink, p->parent, p->route);
+	if (WriteLink(TheLink, LINKSPEED, 3, TIMEOUT) == 3){
+		return;
+	} else {
+		writeresults(root, LinkName, c4read, kong);
+		AbortExit(PROGRAM_NAME, "Partial results : Timed out testing link speed for processor %d", p->tpid);
+	}
+} 
 
-void sendid(struct tpstats * p)
-{
-    unsigned char   int16[2];
-    int16[0] = (unsigned char) p->tpid & 0xFF;
-    int16[1] = (unsigned char) p->tpid >> 8;
-    setroute(TheLink, p->parent, p->route);
-    if (!sendiserver(TheLink, 2, int16))
-    {
-	writeresults(root, LinkName, c4read, kong);
-	AbortExit(PROGRAM_NAME, "Partial results : Failed to send Transputer id to processor %d", p->tpid);
-    }
+void sendid(struct tpstats * p) {
+	unsigned char   int16[2];
+	int16[0] = (unsigned char) p->tpid & 0xFF;
+	int16[1] = (unsigned char) p->tpid >> 8;
+	setroute(TheLink, p->parent, p->route);
+	if (!sendiserver(TheLink, 2, int16)) {
+		writeresults(root, LinkName, c4read, kong);
+		AbortExit(PROGRAM_NAME, "Partial results : Failed to send Transputer id to processor %d", p->tpid);
+	}
 }
 
-struct tpstats *create(struct tpstats * parent, int link)
-{
+struct tpstats *create(struct tpstats * parent, int link) {
     struct tpstats *p;
     int             i;
 
     for (p = root; p->next != NULL; p = p->next);
-    if (parent->linkno[link] == C4)
-    {
+    if (parent->linkno[link] == C4) {
 	p->next = (struct tpstats *) Malloc(sizeof(struct c4stats));
 	p->next->tpid = p->tpid + 1;
 	p = p->next;
-    } else
-    {
+    } else {
 	p->next = (struct tpstats *) Malloc(sizeof(struct tpstats));
 	p->next->tpid = p->tpid + 1;
 	p = p->next;
 	p->procspeed = 0;
 	p->bootlink = 255;
 	p->linkspeed = 0.0f;
-	for (i = 0; i < 4; i++)
-	{
+	for (i = 0; i < 4; i++) {
 	    p->links[i] = NULL;
 	    p->linkno[i] = UNKNOWN;
 	}
@@ -406,46 +396,43 @@ struct tpstats *create(struct tpstats * parent, int link)
 }                               /* create */
 
 
-void getstats(struct tpstats * p)
-{
-    unsigned char   string[6];
-    unsigned int    i = 0;
-    int             tptype;
-    if ((getiserver(TheLink, &i, string, sizeof(string))) && (i == 6))
-    {
-	tptype = string[0] + ((char) string[1] << 8);
-	if (p->tptype == T32)
-	    p->tptype = tptype;
-	else
-	if ((p->tptype == T16) && (class(tptype) == T_414))
-	    p->tptype = T_212;
-	p->bootlink = string[3];
-	p->links[p->bootlink] = p->parent;
-	if (p->parent != NULL)
-	{
-	    p->linkno[p->bootlink] = p->route;
-	    p->parent->linkno[p->route] = p->bootlink;
-	} else
-	    p->linkno[p->bootlink] = HOST_TAG;
-	p->procspeed = string[2];
-	p->linkspeed = (float) (string[4] + (string[5] << 8));
-	if (p->linkspeed != 0.0f)
-	    p->linkspeed = (float) (256.0E6 / p->linkspeed);
-    } else
-    {
-	writeresults(root, LinkName, c4read, kong);
-	AbortExit(PROGRAM_NAME, "%d Partial results : Error reading Transputer %d type information", i, p->tpid);
-    }
+void
+getstats(struct tpstats *p) {
+	unsigned char   string[6];
+	unsigned int    i = 0;
+	int             tptype;
+	if ((getiserver(TheLink, &i, string, sizeof(string))) && (i == 6)) {
+		tptype = string[0] + ((char) string[1] << 8);
+		if (p->tptype == T32) {
+			p->tptype = tptype;
+		} else if ((p->tptype == T16) && (class(tptype) == T_414)) {
+			p->tptype = T_212;
+		}
+		p->bootlink = string[3];
+		p->links[p->bootlink] = p->parent;
+		if (p->parent != NULL) {
+			p->linkno[p->bootlink] = p->route;
+			p->parent->linkno[p->route] = p->bootlink;
+		} else {
+			p->linkno[p->bootlink] = HOST_TAG;
+		}
+		p->procspeed = string[2];
+		p->linkspeed = (float) (string[4] + (string[5] << 8));
+		if (p->linkspeed != 0.0f) {
+			p->linkspeed = (float) (256.0E6 / p->linkspeed);
+		}
+	} else {
+		writeresults(root, LinkName, c4read, kong);
+		AbortExit(PROGRAM_NAME, "%d Partial results : Error reading Transputer %d type information", i, p->tpid);
+	}
 }
 
-int checksum(struct tpstats * p, int link)
-{
-    while           (p->parent != NULL)
-    {
-			link = (link << 2) + p->route;
-	p = p->parent;
-    }
-    return (link);
+int checksum(struct tpstats * p, int link) {
+	while (p->parent != NULL) {
+		link = (link << 2) + p->route;
+		p = p->parent;
+	}
+	return (link);
 }
 
 int nextcandidate(struct tpstats ** child, struct tpstats ** parent)
@@ -461,12 +448,12 @@ int nextcandidate(struct tpstats ** child, struct tpstats ** parent)
 		{
 		    case T16:
 		    case T32:
-			success = TRUE;
-			*child = create(*parent, i);
-			break;
+		    	success = TRUE;
+		    	*child = create(*parent, i);
+		    	break;
 		    default:
-			success = FALSE;
-			break;
+		    	success = FALSE;
+		    	break;
 		}
     return (success);
 }
@@ -475,11 +462,14 @@ void solve(struct tpstats * current, int length, unsigned char *buffer) {
     struct tpstats *p;
     int             id;
 
+    /*
     printf("solve: processor %d [", current->tpid);
-    for (id=0; id<length; id++)
-	printf("%d ", buffer[id]);
-    printf("]\n");
-
+    for (id=0; id<length; id++) {
+    	printf("%d ", buffer[id]);
+	}
+	printf("]\n");
+	*/
+	
     switch (buffer[0]) {
 		case qHALF:
 			if (length == 2) {

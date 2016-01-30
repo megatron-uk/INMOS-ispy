@@ -737,54 +737,56 @@ int sendiserver(LINK TheLink, unsigned int length, unsigned char *buffer)
 		return (FALSE);
 }
 
-void setroute(LINK TheLink, struct tpstats * p, int lastlink)
-{
-    unsigned char  *route;
-    struct tpstats *q;
-    unsigned int    i;
-    static unsigned char ROUTE[] = {0xFF, 0xFF, TAG_SETPATH};
-    if (p != NULL)
-    {
-	route = (unsigned char *) Malloc((p->routelen) + 1);
-	if (route == NULL)
-	    AbortExit("loader", "out of memory in setroute, route length %d",
-		      (p->routelen) + 1);
-	route[p->routelen] = (unsigned char) lastlink;
-	for (i = p->routelen, q = p;
-	     (i > 0) && (q != NULL);
-	     i--, q = q->parent)
-	    route[i - 1] = (unsigned char) q->route;
-	if ((i != 0) || (q->parent != NULL))
-	    AbortExit("loader", "Error finding route thread, processor %d", p->tpid);
-	if ((WriteLink(TheLink, ROUTE, sizeof(ROUTE), TIMEOUT) ==
-	  sizeof(ROUTE)) && sendiserver(TheLink, (p->routelen) + 1, route));
-	else
-	{
-	    if (lastlink == (-1))
-		AbortExit("loader", "Timed out stopping processor %d", p->tpid);
-	    else
-	    if (lastlink < 4)
-		AbortExit("loader", "Timed out setting route to processor %d",
-			  p->links[lastlink]->tpid);
-	    //else
-	    //if (lastlink == 4)
-		//AbortExit("loader", "Timed out talking to application on processor %d",
-		//	  p->tpid);
+void setroute(LINK TheLink, struct tpstats * p, int lastlink) {
+	unsigned char  *route;
+	struct tpstats *q;
+	unsigned int    i;
+	static unsigned char ROUTE[] = {0xFF, 0xFF, TAG_SETPATH};
+	if (p != NULL) {
+		route = (unsigned char *) Malloc((p->routelen) + 1);
+		
+		if (route == NULL) {
+			AbortExit("loader", "out of memory in setroute, route length %d", (p->routelen) + 1);
+		}
+		route[p->routelen] = (unsigned char) lastlink;
+		
+		for (i = p->routelen, q = p; (i > 0) && (q != NULL); i--, q = q->parent) {
+			route[i - 1] = (unsigned char) q->route;
+		}
+		
+		if ((i != 0) || (q->parent != NULL)) {
+			AbortExit("loader", "Error finding route thread, processor %d", p->tpid);
+		}
+		if ((WriteLink(TheLink, ROUTE, sizeof(ROUTE), TIMEOUT) == sizeof(ROUTE)) && sendiserver(TheLink, (p->routelen) + 1, route)) {
+			/* noop */
+		} else {
+			if (lastlink == (-1)) {
+				AbortExit("loader", "Timed out stopping processor %d", p->tpid);
+			}  else {
+				if (lastlink < 4) {
+					AbortExit("loader", "Timed out setting route to processor %d",  p->links[lastlink]->tpid);
+				}
+				//else {
+				//	if (lastlink == 4) {
+				//		AbortExit("loader", "Timed out talking to application on processor %d", p->tpid);
+				//	}
+				//}
+			}
+		
+			free(route);
+		}
 	}
-	free(route);
-    }
 }
 
-void tpboot(LINK TheLink, struct tpstats * p)
-{
+void tpboot(LINK TheLink, struct tpstats * p) {
     static unsigned char TPBOOT[] = {0xFF, 0xFF, TAG_BOOT};
-    if (p->parent != NULL)
-    {
-	setroute(TheLink, p->parent, p->route);
-	if (WriteLink(TheLink, TPBOOT, 3, TIMEOUT) == 3);
-	else
-	    AbortExit("loader", "Timed out preparing to boot processor %d",
-		      p->tpid);
+    if (p->parent != NULL) {
+    	setroute(TheLink, p->parent, p->route);
+    	if (WriteLink(TheLink, TPBOOT, 3, TIMEOUT) == 3) {
+    		/* noop */
+    	} else {
+	    	AbortExit("loader", "Timed out preparing to boot processor %d", p->tpid);
+	    }
     }
 }
 
@@ -801,75 +803,61 @@ int load(LINK TheLink, struct tpstats * p,
 	int 		flag, j, k;
 	unsigned char 	params[16];
 	
-	//printf("load - tpboot\n");
+	printf("load - tpboot\n");
 	tpboot(TheLink, p);
 	length = CodeSize;
-	if (p->parent != NULL)
-	{
-		//printf("load - sendiserver 1\n");
+	if (p->parent != NULL) {
+		printf("load - sendiserver 1\n");
 		flag = sendiserver(TheLink, sizeof(boot), boot);
-	}
-	else
-	{
-		//printf("load - writelink 1\n");
+	} else {
+		printf("load - writelink 1\n");
 		flag = WriteLink(TheLink, boot, sizeof(boot), TIMEOUT) == sizeof(boot);
 	}
-	if (flag)
-	{
+	if (flag) {
 		j = 0;
-		for (k = 0; k < BytesPerWord; k++)
-		{
+		for (k = 0; k < BytesPerWord; k++) {
 			params[j++] = (unsigned char) (WorkSpace & 0xFF);
 			WorkSpace = WorkSpace >> 8;
 		}
 		
-		for (k = 0; k < BytesPerWord; k++)
-		{
+		for (k = 0; k < BytesPerWord; k++) {
 			params[j++] = (unsigned char) (VectorSpace & 0xFF);
 			VectorSpace = VectorSpace >> 8;
 		}
 	
-		for (k = 0; k < BytesPerWord; k++)
-		{
+		for (k = 0; k < BytesPerWord; k++) {
 			params[j++] = (unsigned char) (CodeSize & 0xFF);
 			CodeSize = CodeSize >> 8;
 		}
 	
-		for (k = 0; k < BytesPerWord; k++)
-		{
+		for (k = 0; k < BytesPerWord; k++) {
 			params[j++] = (unsigned char) (Offset & 0xFF);
 			Offset = Offset >> 8;
 		}
 	
-		if (p->parent != NULL)
-		{
-			//printf("load - sendiserver 2\n");
+		if (p->parent != NULL) {
+			printf("load - sendiserver 2\n");
 			flag = sendiserver(TheLink, 4 * BytesPerWord, params);
-		}
-		else
-		{
-			//printf("load - writelink 2\n");
+		} else {
+			printf("load - writelink 2\n");
 			flag = (WriteLink(TheLink, params, 4 * BytesPerWord, TIMEOUT) == (4 * BytesPerWord));
 		}
 		
-		for (i = 0; (i < length) && flag; i += count)
-		{
+		for (i = 0; (i < length) && flag; i += count)	{
 			count = length - i;
-			if (count > SEGSIZE)
+			if (count > SEGSIZE) {
 				count = SEGSIZE;
-			if (p->parent != NULL)
-			{
-				//printf("load - sendiserver 3\n");
-				flag = sendiserver(TheLink, (int) count, &Code[i]);
 			}
-			else
-			{
-				//printf("load - writelink 3\n");
+			if (p->parent != NULL) {
+				printf("load - sendiserver 3\n");
+				flag = sendiserver(TheLink, (int) count, &Code[i]);
+			} else {
+				printf("load - writelink 3\n");
 				flag = WriteLink(TheLink, &Code[i], (int) count, TIMEOUT) == (int) count;
 			}
 		}
 	}
-	//printf("load - finished [%d]\n", flag);
+	printf("load - finished [%d]\n", flag);
 	return (flag);
 
 }
